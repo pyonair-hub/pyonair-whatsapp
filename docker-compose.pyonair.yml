@@ -1,0 +1,214 @@
+version: "3.8"
+
+# Pyonair WhatsApp - Production Docker Compose
+# Multi-instance WhatsApp API for Pyonair client deployments
+# Preconfigured for DigitalOcean with Chatwoot + webhook integration
+
+services:
+  api:
+    container_name: pyonair_whatsapp_api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - whatsapp_instances:/evolution/instances
+    networks:
+      - pyonair-whatsapp
+    environment:
+      # Server
+      SERVER_NAME: pyonair-whatsapp
+      SERVER_TYPE: http
+      SERVER_PORT: 8080
+      SERVER_URL: ${PYONAIR_WHATSAPP_URL:-http://localhost:8080}
+      SERVER_DISABLE_DOCS: "false"
+      SERVER_DISABLE_MANAGER: "false"
+
+      # Database
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${POSTGRES_USER:-pyonair}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pyonair_whatsapp}
+      DATABASE_CONNECTION_CLIENT_NAME: pyonair-whatsapp
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+      DATABASE_SAVE_MESSAGE_UPDATE: "true"
+      DATABASE_SAVE_DATA_CONTACTS: "true"
+      DATABASE_SAVE_DATA_CHATS: "true"
+      DATABASE_SAVE_DATA_HISTORIC: "true"
+      DATABASE_SAVE_DATA_LABELS: "true"
+      DATABASE_SAVE_IS_ON_WHATSAPP: "true"
+      DATABASE_SAVE_IS_ON_WHATSAPP_DAYS: "7"
+
+      # Redis Cache
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379
+      CACHE_REDIS_PREFIX_KEY: pyonair-wa
+      CACHE_REDIS_TTL: "604800"
+      CACHE_REDIS_SAVE_INSTANCES: "true"
+      CACHE_LOCAL_ENABLED: "true"
+      CACHE_LOCAL_TTL: "86400"
+
+      # Authentication
+      AUTHENTICATION_API_KEY: ${PYONAIR_API_KEY}
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "false"
+
+      # CORS - Pyonair domains only
+      CORS_ORIGIN: "https://pyonair.com,https://*.pyonair.com,https://app.pyonair.com,https://admin.pyonair.com,https://support.pyonair.com"
+      CORS_METHODS: "POST,GET,PUT,DELETE"
+      CORS_CREDENTIALS: "true"
+
+      # Session branding
+      CONFIG_SESSION_PHONE_CLIENT: "Pyonair WhatsApp"
+      CONFIG_SESSION_PHONE_NAME: Chrome
+
+      # QR Code - Pyonair red
+      QRCODE_LIMIT: "30"
+      QRCODE_COLOR: "#E63946"
+
+      # Webhooks - Pyonair Support (Chatwoot) integration
+      WEBHOOK_GLOBAL_URL: ${PYONAIR_WEBHOOK_URL:-http://chatwoot:3000/webhooks/whatsapp}
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "true"
+      WEBHOOK_EVENTS_APPLICATION_STARTUP: "true"
+      WEBHOOK_EVENTS_INSTANCE_CREATE: "true"
+      WEBHOOK_EVENTS_INSTANCE_DELETE: "true"
+      WEBHOOK_EVENTS_QRCODE_UPDATED: "true"
+      WEBHOOK_EVENTS_MESSAGES_UPSERT: "true"
+      WEBHOOK_EVENTS_MESSAGES_EDITED: "true"
+      WEBHOOK_EVENTS_MESSAGES_UPDATE: "true"
+      WEBHOOK_EVENTS_MESSAGES_DELETE: "true"
+      WEBHOOK_EVENTS_SEND_MESSAGE: "true"
+      WEBHOOK_EVENTS_CONTACTS_UPSERT: "true"
+      WEBHOOK_EVENTS_PRESENCE_UPDATE: "true"
+      WEBHOOK_EVENTS_CONNECTION_UPDATE: "true"
+      WEBHOOK_EVENTS_GROUPS_UPSERT: "true"
+      WEBHOOK_EVENTS_GROUP_PARTICIPANTS_UPDATE: "true"
+      WEBHOOK_EVENTS_CALL: "true"
+      WEBHOOK_EVENTS_ERRORS: "true"
+      WEBHOOK_EVENTS_ERRORS_WEBHOOK: ${PYONAIR_ERROR_WEBHOOK_URL:-}
+      WEBHOOK_REQUEST_TIMEOUT_MS: "30000"
+      WEBHOOK_RETRY_MAX_ATTEMPTS: "10"
+      WEBHOOK_RETRY_INITIAL_DELAY_SECONDS: "5"
+      WEBHOOK_RETRY_USE_EXPONENTIAL_BACKOFF: "true"
+      WEBHOOK_RETRY_MAX_DELAY_SECONDS: "300"
+
+      # WebSocket
+      WEBSOCKET_ENABLED: "true"
+      WEBSOCKET_GLOBAL_EVENTS: "true"
+
+      # Chatwoot Integration (Pyonair Support)
+      CHATWOOT_ENABLED: "true"
+      CHATWOOT_MESSAGE_DELETE: "true"
+      CHATWOOT_MESSAGE_READ: "true"
+      CHATWOOT_BOT_CONTACT: "true"
+
+      # N8N Integration (Pyonair Automations)
+      N8N_ENABLED: "true"
+
+      # Multi-instance support (each client gets their own number)
+      DEL_INSTANCE: "false"
+      DEL_TEMP_INSTANCES: "true"
+
+      # Logging
+      LOG_LEVEL: "ERROR,WARN,INFO,LOG,WEBHOOKS"
+      LOG_COLOR: "true"
+      LOG_BAILEYS: error
+
+      # Language
+      LANGUAGE: en
+
+      # Telemetry disabled for privacy
+      TELEMETRY_ENABLED: "false"
+
+      # Event Emitter (high for multi-instance)
+      EVENT_EMITTER_MAX_LISTENERS: "100"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  manager:
+    container_name: pyonair_whatsapp_manager
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - pyonair-whatsapp
+    volumes:
+      - ./manager/dist:/app/manager
+    depends_on:
+      api:
+        condition: service_healthy
+
+  postgres:
+    container_name: pyonair_whatsapp_postgres
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pyonair_whatsapp}
+      POSTGRES_USER: ${POSTGRES_USER:-pyonair}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command:
+      - postgres
+      - -c
+      - max_connections=500
+      - -c
+      - listen_addresses=*
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=8MB
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pyonair-whatsapp
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pyonair} -d ${POSTGRES_DB:-pyonair_whatsapp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    container_name: pyonair_whatsapp_redis
+    image: redis:7-alpine
+    restart: always
+    command: >
+      redis-server
+      --port 6379
+      --appendonly yes
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - pyonair-whatsapp
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  whatsapp_instances:
+  postgres_data:
+  redis_data:
+
+networks:
+  pyonair-whatsapp:
+    name: pyonair-whatsapp
+    driver: bridge

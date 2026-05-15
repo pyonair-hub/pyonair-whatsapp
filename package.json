@@ -1,7 +1,7 @@
 {
-  "name": "evolution-api",
-  "version": "2.3.7",
-  "description": "Rest api for communication with WhatsApp",
+  "name": "pyonair-whatsapp",
+  "version": "2.3.7-pyonair.1",
+  "description": "Pyonair WhatsApp - Multi-instance WhatsApp API for client communications",
   "main": "./dist/main.js",
   "type": "commonjs",
   "scripts": {

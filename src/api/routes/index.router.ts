@@ -4,6 +4,7 @@ import Telemetry from '@api/guards/telemetry.guard';
 import { ChannelRouter } from '@api/integrations/channel/channel.router';
 import { ChatbotRouter } from '@api/integrations/chatbot/chatbot.router';
 import { EventRouter } from '@api/integrations/event/event.router';
+import { pyonairRouter } from '@api/integrations/pyonair/pyonair.router';
 import { StorageRouter } from '@api/integrations/storage/storage.router';
 import { waMonitor } from '@api/server.module';
 import { configService, Database, Facebook } from '@config/env.config';
@@ -74,7 +75,7 @@ const metricsBasicAuth = (req: Request, res: Response, next: NextFunction) => {
 
   const auth = req.get('Authorization');
   if (!auth || !auth.startsWith('Basic ')) {
-    res.set('WWW-Authenticate', 'Basic realm="Evolution API Metrics"');
+    res.set('WWW-Authenticate', 'Basic realm="Pyonair WhatsApp Metrics"');
     return res.status(401).send('Authentication required');
   }
 
@@ -196,7 +197,7 @@ router
   .get('/', async (req, res) => {
     res.status(HttpStatus.OK).json({
       status: HttpStatus.OK,
-      message: 'Welcome to the Evolution API, it is working!',
+      message: 'Welcome to the Pyonair WhatsApp, it is working!',
       version: packageJson.version,
       clientName: databaseConfig.CONNECTION.CLIENT_NAME,
       manager: !serverConfig.DISABLE_MANAGER ? `${req.protocol}://${req.get('host')}/manager` : undefined,
@@ -227,6 +228,7 @@ router
   .use('', new ChannelRouter(configService, ...guards).router)
   .use('', new EventRouter(configService, ...guards).router)
   .use('', new ChatbotRouter(...guards).router)
-  .use('', new StorageRouter(...guards).router);
+  .use('', new StorageRouter(...guards).router)
+  .use('/pyonair', pyonairRouter);
 
 export { HttpStatus, router };

@@ -1,10 +1,92 @@
+<h1 align="center">Pyonair WhatsApp</h1>
+
+<p align="center">
+  Multi-instance WhatsApp API for Pyonair client communications.<br/>
+  Built on <a href="https://github.com/EvolutionAPI/evolution-api">Evolution API</a> (Apache 2.0).
+</p>
+
+---
+
+## Pyonair WhatsApp Features
+
+This fork adds Pyonair-specific functionality on top of the Evolution API base:
+
+### Webhook Presets
+
+Pre-configured webhook templates for one-click integration with Pyonair services:
+
+| Preset | Description | Endpoint |
+|--------|-------------|----------|
+| `pyonair-support` | Chatwoot inbox integration | `GET /pyonair/presets/webhooks/pyonair-support` |
+| `pyonair-automations` | N8N workflow triggers | `GET /pyonair/presets/webhooks/pyonair-automations` |
+| `pyonair-crm` | Lead capture to Pyonair CRM | `GET /pyonair/presets/webhooks/pyonair-crm` |
+| `pyonair-analytics` | Message tracking & reporting | `GET /pyonair/presets/webhooks/pyonair-analytics` |
+
+### Instance Templates
+
+Deploy WhatsApp numbers for specific use cases with pre-configured settings:
+
+| Template | Use Case | Auto-Configured |
+|----------|----------|-----------------|
+| `support-agent` | Customer support inbox | Chatwoot webhook, always online, groups ignored |
+| `sales-agent` | Sales outreach | CRM webhook, full history sync, read receipts |
+| `notification-bot` | Automated notifications | N8N webhook, calls rejected, read receipts off |
+
+### Multi-Instance Client Management
+
+Each Pyonair client gets isolated WhatsApp instances with standardized naming:
+
+```
+POST /pyonair/instance-name/generate
+{ "clientSlug": "acme-corp", "purpose": "support", "number": 1 }
+// Returns: { "name": "acme_corp_support_1", "valid": true }
+```
+
+### Pyonair-Specific CORS
+
+Production CORS locked to Pyonair domains (`*.pyonair.com`), with development override via `CORS_ORIGIN=*`.
+
+### Security Headers
+
+Production-ready security headers: X-Frame-Options, Content-Type-Options, XSS-Protection, Referrer-Policy.
+
+### Health Check
+
+```
+GET /pyonair/health
+// Returns service status, feature flags, integration counts
+```
+
+### Quick Start (Pyonair)
+
+```bash
+# Clone and initialize
+git clone https://github.com/pyonair-hub/pyonair-whatsapp.git
+cd pyonair-whatsapp
+./scripts/pyonair-init.sh
+
+# Or for production:
+./scripts/pyonair-init.sh --production
+```
+
+### Pyonair Branding
+
+- QR codes display in Pyonair Red (#E63946)
+- Manager UI rebranded with Pyonair identity
+- Session client shows "Pyonair WhatsApp" on connected devices
+- Telemetry disabled by default for client privacy
+
+---
+
+## Original Evolution API Documentation
+
 <p align="center">
   <a href="https://evolutionfoundation.com.br">
     <img src="./public/hover-evolution.png" alt="Evolution Foundation" />
   </a>
 </p>
 
-<h1 align="center">Evolution API</h1>
+<h2 align="center">Evolution API</h2>
 
 <p align="center">
   Open-source REST API for WhatsApp and multi-channel messaging — part of the Evolution Foundation ecosystem.
